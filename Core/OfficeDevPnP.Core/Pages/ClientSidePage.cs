@@ -36,6 +36,8 @@ namespace OfficeDevPnP.Core.Pages
         public const string FirstPublishedDate = "FirstPublishedDate";
         public const string FileLeafRef = "FileLeafRef";
         public const string DescriptionField = "Description";
+        public const string _AuthorByline = "_AuthorByline";
+        public const string _TopicHeader = "_TopicHeader";
 
         // feature
         public const string SitePagesFeatureId = "b6917cb1-93a0-4b97-a84d-7cf49975d4ec";
@@ -590,7 +592,7 @@ namespace OfficeDevPnP.Core.Pages
 
             page.sitePagesServerRelativeUrl = pagesLibrary.RootFolder.ServerRelativeUrl;
 
-            var file = page.Context.Web.GetFileByServerRelativeUrl($"{page.sitePagesServerRelativeUrl}/{page.pageName}");
+            var file = page.Context.Web.GetFileByServerRelativePath(ResourcePath.FromDecodedUrl($"{page.sitePagesServerRelativeUrl}/{page.pageName}"));
             page.Context.Web.Context.Load(file, f => f.ListItemAllFields, f => f.Exists);
             page.Context.Web.Context.ExecuteQueryRetry();
 
@@ -686,21 +688,44 @@ namespace OfficeDevPnP.Core.Pages
                 item[ClientSidePage.CanvasField] = this.ToHtml();
             }
 
-            // If a custom header image is set then the page must first be saved, otherwise the page contents gets erased
-            if (this.pageHeader.Type == ClientSidePageHeaderType.Custom)
-            {
-                item.Update();
-                this.Context.ExecuteQueryRetry();
-            }
+            // The page must first be saved, otherwise the page contents gets erased
+            item.Update();
+            this.Context.ExecuteQueryRetry();
 
             // Persist the page header
             if (this.pageHeader.Type == ClientSidePageHeaderType.None)
             {
                 item[ClientSidePage.PageLayoutContentField] = ClientSidePageHeader.NoHeader(this.PageTitle);
+                if (item.FieldValues.ContainsKey(ClientSidePage._AuthorByline))
+                {
+                    item[ClientSidePage._AuthorByline] = null;
+                }
+                if (item.FieldValues.ContainsKey(ClientSidePage._TopicHeader))
+                {
+                    item[ClientSidePage._TopicHeader] = null;
+                }
             }
             else
             {
                 item[ClientSidePage.PageLayoutContentField] = this.pageHeader.ToHtml(this.PageTitle);
+
+                // AuthorByline depends on a field holding the author values
+                if (this.pageHeader.AuthorByLineId > -1 && item.FieldValues.ContainsKey(ClientSidePage._AuthorByline))
+                {
+                    FieldUserValue[] userValueCollection = new FieldUserValue[1];
+                    FieldUserValue fieldUserVal = new FieldUserValue
+                    {
+                        LookupId = this.pageHeader.AuthorByLineId
+                    };
+                    userValueCollection.SetValue(fieldUserVal, 0);
+                    item[ClientSidePage._AuthorByline] = userValueCollection;
+                }
+
+                // Topic header needs to be persisted in a field
+                if (!string.IsNullOrEmpty(this.pageHeader.TopicHeader) && item.FieldValues.ContainsKey(ClientSidePage._TopicHeader))
+                {
+                    item[ClientSidePage._TopicHeader] = this.PageHeader.TopicHeader;
+                }
             }
 
             item.Update();
@@ -743,11 +768,14 @@ namespace OfficeDevPnP.Core.Pages
                             this.Context.Site.EnsureProperties(p => p.Id);
                             this.Context.Web.EnsureProperties(p => p.Id, p => p.Url);
 
-                            var previewImage = this.Context.Web.GetFileByServerRelativeUrl(previewImageServerRelativeUrl);
+                            var previewImage = this.Context.Web.GetFileByServerRelativePath(ResourcePath.FromDecodedUrl(previewImageServerRelativeUrl));
                             this.Context.Load(previewImage, p => p.UniqueId);
                             this.Context.ExecuteQueryRetry();
 
-                            item[ClientSidePage.BannerImageUrl] = $"{this.Context.Web.Url}/_layouts/15/getpreview.ashx?guidSite={this.Context.Site.Id.ToString()}&guidWeb={this.Context.Web.Id.ToString()}&guidFile={previewImage.UniqueId.ToString()}";
+                            Uri rootUri = new Uri(this.Context.Web.Url);
+                            rootUri = new Uri(rootUri, "/");
+
+                            item[ClientSidePage.BannerImageUrl] = $"{rootUri}_layouts/15/getpreview.ashx?guidSite={this.Context.Site.Id.ToString()}&guidWeb={this.Context.Web.Id.ToString()}&guidFile={previewImage.UniqueId.ToString()}";
                             isDirty = true;
                         }
                         catch { }
@@ -843,6 +871,7 @@ namespace OfficeDevPnP.Core.Pages
                 case DefaultClientSideWebParts.MicrosoftForms: return "b19b3b9e-8d13-4fec-a93c-401a091c0707";
                 case DefaultClientSideWebParts.Spacer: return "8654b779-4886-46d4-8ffb-b5ed960ee986";
                 case DefaultClientSideWebParts.ClientWebPart: return "243166f5-4dc3-4fe2-9df2-a7971b546a0a";
+                case DefaultClientSideWebParts.PowerApps: return "9d7e898c-f1bb-473a-9ace-8b415036578b";
                 default: return "";
             }
         }
@@ -884,6 +913,7 @@ namespace OfficeDevPnP.Core.Pages
                 case "b19b3b9e-8d13-4fec-a93c-401a091c0707": return DefaultClientSideWebParts.MicrosoftForms;
                 case "8654b779-4886-46d4-8ffb-b5ed960ee986": return DefaultClientSideWebParts.Spacer;
                 case "243166f5-4dc3-4fe2-9df2-a7971b546a0a": return DefaultClientSideWebParts.ClientWebPart;
+                case "9d7e898c-f1bb-473a-9ace-8b415036578b": return DefaultClientSideWebParts.PowerApps;
                 default: return DefaultClientSideWebParts.ThirdParty;
             }
         }
@@ -1242,7 +1272,7 @@ namespace OfficeDevPnP.Core.Pages
             serverRelativePageName = $"{this.sitePagesServerRelativeUrl}/{this.pageName}";
 
             // ensure page exists
-            pageFile = this.Context.Web.GetFileByServerRelativeUrl(serverRelativePageName);
+            pageFile = this.Context.Web.GetFileByServerRelativePath(ResourcePath.FromDecodedUrl(serverRelativePageName));
             this.Context.Web.Context.Load(pageFile, f => f.ListItemAllFields, f => f.Exists);
             this.Context.Web.Context.ExecuteQueryRetry();
         }
@@ -1303,18 +1333,34 @@ namespace OfficeDevPnP.Core.Pages
                         };
                         var sectionData = JsonConvert.DeserializeObject<ClientSideCanvasData>(controlData, jsonSerializerSettings);
 
-                        var currentSection = this.sections.Where(p => p.Order == sectionData.Position.ZoneIndex).FirstOrDefault();
-                        if (currentSection == null)
+                        CanvasSection currentSection = null;
+                        if (sectionData.Position != null)
                         {
-                            this.AddSection(new CanvasSection(this), sectionData.Position.ZoneIndex);
-                            currentSection = this.sections.Where(p => p.Order == sectionData.Position.ZoneIndex).First();
+                            currentSection = this.sections.Where(p => p.Order == sectionData.Position.ZoneIndex).FirstOrDefault();
                         }
 
-                        var currentColumn = currentSection.Columns.Where(p => p.Order == sectionData.Position.SectionIndex).FirstOrDefault();
+                        if (currentSection == null)
+                        {
+                            if (sectionData.Position != null)
+                            {
+                                this.AddSection(new CanvasSection(this), sectionData.Position.ZoneIndex);
+                                currentSection = this.sections.Where(p => p.Order == sectionData.Position.ZoneIndex).First();
+                            }
+                        }
+
+                        CanvasColumn currentColumn = null;
+                        if (sectionData.Position != null)
+                        {
+                            currentColumn = currentSection.Columns.Where(p => p.Order == sectionData.Position.SectionIndex).FirstOrDefault();
+                        }
+
                         if (currentColumn == null)
                         {
-                            currentSection.AddColumn(new CanvasColumn(currentSection, sectionData.Position.SectionIndex, sectionData.Position.SectionFactor));
-                            currentColumn = currentSection.Columns.Where(p => p.Order == sectionData.Position.SectionIndex).First();
+                            if (sectionData.Position != null)
+                            {
+                                currentSection.AddColumn(new CanvasColumn(currentSection, sectionData.Position.SectionIndex, sectionData.Position.SectionFactor));
+                                currentColumn = currentSection.Columns.Where(p => p.Order == sectionData.Position.SectionIndex).First();
+                            }
                         }
                     }
 

@@ -326,9 +326,9 @@ namespace Microsoft.SharePoint.Client
             if (folder == null) throw new ArgumentException(CoreResources.FileFolderExtensions_FolderMissing);
             return list.ConvertFolderToDocumentSetImplementation(folder);
 #else
-            var folder = list.RootFolder.ResolveSubFolderImplementation(folderName).GetAwaiter().GetResult();
+            var folder = Task.Run(() => list.RootFolder.ResolveSubFolderImplementation(folderName)).GetAwaiter().GetResult();
             if (folder == null) throw new ArgumentException(CoreResources.FileFolderExtensions_FolderMissing);
-            return list.ConvertFolderToDocumentSetImplementation(folder).GetAwaiter().GetResult();
+            return Task.Run(() => list.ConvertFolderToDocumentSetImplementation(folder)).GetAwaiter().GetResult();
 #endif
         }
 #if !ONPREMISES
@@ -453,7 +453,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             var folder = CreateFolderImplementation(folderCollection, folderName);
 #else
-            var folder = CreateFolderImplementation(folderCollection, folderName).GetAwaiter().GetResult();
+            var folder = Task.Run(() => CreateFolderImplementation(folderCollection, folderName)).GetAwaiter().GetResult();
 #endif
             return folder;
         }
@@ -509,7 +509,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             var folder = CreateFolderImplementation(folderCollection, folderName, parentFolder);
 #else
-            var folder = CreateFolderImplementation(folderCollection, folderName, parentFolder).GetAwaiter().GetResult();
+            var folder = Task.Run(() => CreateFolderImplementation(folderCollection, folderName, parentFolder)).GetAwaiter().GetResult();
 #endif
             return folder;
         }
@@ -640,7 +640,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             return DoesFolderExistImplementation(web, serverRelativeFolderUrl);
 #else
-            return DoesFolderExistImplementation(web, serverRelativeFolderUrl).GetAwaiter().GetResult();
+            return Task.Run(() => DoesFolderExistImplementation(web, serverRelativeFolderUrl)).GetAwaiter().GetResult();
 #endif
         }
 
@@ -701,7 +701,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             return web.EnsureFolderImplementation(parentFolder, folderPath, expressions);
 #else
-            return web.EnsureFolderImplementation(parentFolder, folderPath, expressions).GetAwaiter().GetResult();
+            return Task.Run(() => web.EnsureFolderImplementation(parentFolder, folderPath, expressions)).GetAwaiter().GetResult();
 #endif
         }
 #if !ONPREMISES
@@ -771,7 +771,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             var folder = EnsureFolderImplementation(folderCollection, folderName, expressions: expressions);
 #else
-            var folder = EnsureFolderImplementation(folderCollection, folderName, expressions: expressions).GetAwaiter().GetResult();
+            var folder = Task.Run(() => EnsureFolderImplementation(folderCollection, folderName, expressions: expressions)).GetAwaiter().GetResult();
 #endif
             return folder;
         }
@@ -826,7 +826,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             var folder = EnsureFolderImplementation(folderCollection, folderName, parentFolder, expressions);
 #else
-            var folder = EnsureFolderImplementation(folderCollection, folderName, parentFolder, expressions).GetAwaiter().GetResult();
+            var folder = Task.Run(() => EnsureFolderImplementation(folderCollection, folderName, parentFolder, expressions)).GetAwaiter().GetResult();
 #endif
             return folder;
         }
@@ -916,7 +916,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             return web.EnsureFolderPathImplementation(webRelativeUrl, expressions);
 #else
-            return web.EnsureFolderPathImplementation(webRelativeUrl, expressions).GetAwaiter().GetResult();
+            return Task.Run(() => web.EnsureFolderPathImplementation(webRelativeUrl, expressions)).GetAwaiter().GetResult();
 #endif
         }
 #if !ONPREMISES
@@ -962,8 +962,13 @@ namespace Microsoft.SharePoint.Client
         private static async Task<Folder> EnsureFolderPathImplementation(this Web web, string webRelativeUrl, params Expression<Func<Folder, object>>[] expressions)
 #endif
         {
+            
             if (webRelativeUrl == null) { throw new ArgumentNullException(nameof(webRelativeUrl)); }
 
+            if(webRelativeUrl.EndsWith("."))
+            {
+                throw new Exception("Folder names cannot end on a period (.).");
+            }
             //Web root folder should be returned if webRelativeUrl is empty
             if (webRelativeUrl.Length != 0 && string.IsNullOrWhiteSpace(webRelativeUrl)) { throw new ArgumentException(CoreResources.FileFolderExtensions_EnsureFolderPath_Folder_URL_is_required_, nameof(webRelativeUrl)); }
 
@@ -1136,7 +1141,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             return ParseFiles(rootFolder, match, web.Context as ClientContext);
 #else
-            return ParseFiles(rootFolder, match, web.Context as ClientContext).GetAwaiter().GetResult();
+            return Task.Run(() => ParseFiles(rootFolder, match, web.Context as ClientContext)).GetAwaiter().GetResult();
 #endif
         }
 
@@ -1170,7 +1175,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             return ParseFiles(rootFolder, match, list.Context as ClientContext);
 #else
-            return ParseFiles(rootFolder, match, list.Context as ClientContext).GetAwaiter().GetResult();
+            return Task.Run(() => ParseFiles(rootFolder, match, list.Context as ClientContext)).GetAwaiter().GetResult();
 #endif
         }
 #if !ONPREMISES
@@ -1202,7 +1207,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             return ParseFiles(folder, match, folder.Context as ClientContext);
 #else
-            return ParseFiles(folder, match, folder.Context as ClientContext).GetAwaiter().GetResult();
+            return Task.Run(() => ParseFiles(folder, match, folder.Context as ClientContext)).GetAwaiter().GetResult();
 #endif
         }
 #if !ONPREMISES
@@ -1237,7 +1242,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             var exists = FolderExistsImplementation(folderCollection, folderName);
 #else
-            var exists = FolderExistsImplementation(folderCollection, folderName).GetAwaiter().GetResult();
+            var exists = Task.Run(() => FolderExistsImplementation(folderCollection, folderName)).GetAwaiter().GetResult();
 #endif
             return exists;
         }
@@ -1284,7 +1289,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             var exists = FolderExistsImplementation(folderCollection, folderName);
 #else
-            var exists = FolderExistsImplementation(folderCollection, folderName).GetAwaiter().GetResult();
+            var exists = Task.Run(() => FolderExistsImplementation(folderCollection, folderName)).GetAwaiter().GetResult();
 #endif
             return exists;
         }
@@ -1361,7 +1366,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             return web.GetFileAsStringImplementation(serverRelativeUrl);
 #else
-            return web.GetFileAsStringImplementation(serverRelativeUrl).GetAwaiter().GetResult();
+            return Task.Run(() => web.GetFileAsStringImplementation(serverRelativeUrl)).GetAwaiter().GetResult();
 #endif
         }
 #if !ONPREMISES
@@ -1463,7 +1468,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             web.PublishFileImplementation(serverRelativeUrl, comment);
 #else
-            web.PublishFileImplementation(serverRelativeUrl, comment).GetAwaiter().GetResult();
+            Task.Run(() => web.PublishFileImplementation(serverRelativeUrl, comment)).GetAwaiter().GetResult();
 #endif
         }
 #if !ONPREMISES
@@ -1524,7 +1529,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             return folder.ResolveSubFolderImplementation(folderName);
 #else
-            return folder.ResolveSubFolderImplementation(folderName).GetAwaiter().GetResult();
+            return Task.Run(() => folder.ResolveSubFolderImplementation(folderName)).GetAwaiter().GetResult();
 #endif
         }
 #if !ONPREMISES
@@ -1588,7 +1593,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             web.SaveFileToLocalImplementation(serverRelativeUrl, localPath, localFileName, fileExistsCallBack);
 #else
-            web.SaveFileToLocalImplementation(serverRelativeUrl, localPath, localFileName, fileExistsCallBack).GetAwaiter().GetResult();
+            Task.Run(() => web.SaveFileToLocalImplementation(serverRelativeUrl, localPath, localFileName, fileExistsCallBack)).GetAwaiter().GetResult();
 #endif
         }
 #if !ONPREMISES
@@ -1670,7 +1675,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
                 return folder.UploadFileImplementation(fileName, stream, overwriteIfExists);
 #else
-                return folder.UploadFileImplementation(fileName, stream, overwriteIfExists).GetAwaiter().GetResult();
+                return Task.Run(() => folder.UploadFileImplementation(fileName, stream, overwriteIfExists)).GetAwaiter().GetResult();
 #endif
         }
 #if !ONPREMISES
@@ -1709,7 +1714,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             return folder.UploadFileImplementation(fileName, stream, overwriteIfExists);
 #else
-            return folder.UploadFileImplementation(fileName, stream, overwriteIfExists).GetAwaiter().GetResult();
+            return Task.Run(() => folder.UploadFileImplementation(fileName, stream, overwriteIfExists)).GetAwaiter().GetResult();
 #endif
         }
 #if !ONPREMISES
@@ -1795,7 +1800,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
                 return folder.UploadFileWebDavImplementation(fileName, stream, overwriteIfExists);
 #else
-                return folder.UploadFileWebDavImplementation(fileName, stream, overwriteIfExists).GetAwaiter().GetResult();
+                return Task.Run(() => folder.UploadFileWebDavImplementation(fileName, stream, overwriteIfExists)).GetAwaiter().GetResult();
 #endif
         }
 #if !ONPREMISES
@@ -1836,7 +1841,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             return folder.UploadFileWebDavImplementation(fileName, stream, overwriteIfExists);
 #else
-            return folder.UploadFileWebDavImplementation(fileName, stream, overwriteIfExists).GetAwaiter().GetResult();
+            return Task.Run(() => folder.UploadFileWebDavImplementation(fileName, stream, overwriteIfExists)).GetAwaiter().GetResult();
 #endif
         }
 #if !ONPREMISES
@@ -1914,7 +1919,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             return folder.GetFileImplementation(fileName);
 #else
-            return folder.GetFileImplementation(fileName).GetAwaiter().GetResult();
+            return Task.Run(() => folder.GetFileImplementation(fileName)).GetAwaiter().GetResult();
 #endif
         }
 #if !ONPREMISES
@@ -1996,7 +2001,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
                 return serverFile.VerifyIfUploadRequiredImplementation(file);
 #else
-                return serverFile.VerifyIfUploadRequiredImplementation(file).GetAwaiter().GetResult();
+                return Task.Run(() => serverFile.VerifyIfUploadRequiredImplementation(file)).GetAwaiter().GetResult();
 #endif
         }
 #if !ONPREMISES
@@ -2030,7 +2035,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             return serverFile.VerifyIfUploadRequiredImplementation(localStream);
 #else
-            return serverFile.VerifyIfUploadRequiredImplementation(localStream).GetAwaiter().GetResult();
+            return Task.Run(() => serverFile.VerifyIfUploadRequiredImplementation(localStream)).GetAwaiter().GetResult();
 #endif
         }
 #if !ONPREMISES
@@ -2105,7 +2110,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             file.SetFilePropertiesImplementation(properties, checkoutIfRequired);
 #else
-            file.SetFilePropertiesImplementation(properties, checkoutIfRequired).GetAwaiter().GetResult();
+            Task.Run(() => file.SetFilePropertiesImplementation(properties, checkoutIfRequired)).GetAwaiter().GetResult();
 #endif
         }
 
@@ -2306,7 +2311,7 @@ namespace Microsoft.SharePoint.Client
 #if ONPREMISES
             file.PublishFileToLevelImplementation(level);
 #else
-            file.PublishFileToLevelImplementation(level).GetAwaiter().GetResult();
+            Task.Run(() => file.PublishFileToLevelImplementation(level)).GetAwaiter().GetResult();
 #endif
         }
 #if !ONPREMISES
