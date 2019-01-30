@@ -51,7 +51,18 @@ namespace OfficeDevPnP.Core
         private string _clientId;
         private Uri _redirectUri;
 
-#region Authenticating against SharePoint Online using credentials or app-only
+        #region Construction
+        public AuthenticationManager()
+        {
+#if !ONPREMISES
+            // Set the TLS preference. Needed on some server os's to work when Office 365 removes support for TLS 1.0
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls;
+#endif
+        }
+        #endregion  
+
+
+        #region Authenticating against SharePoint Online using credentials or app-only
         /// <summary>
         /// Returns a SharePointOnline ClientContext object
         /// </summary>
@@ -281,8 +292,9 @@ namespace OfficeDevPnP.Core
         /// </summary>
         /// <param name="siteUrl">Site for which the ClientContext object will be instantiated</param>
         /// <param name="icon">Optional icon to use for the popup form</param>
+        /// <param name="scriptErrorsSuppressed">Optional parameter to set WebBrowser.ScriptErrorsSuppressed value in the popup form</param>
         /// <returns>ClientContext to be used by CSOM code</returns>
-        public ClientContext GetWebLoginClientContext(string siteUrl, System.Drawing.Icon icon = null)
+        public ClientContext GetWebLoginClientContext(string siteUrl, System.Drawing.Icon icon = null, bool scriptErrorsSuppressed = true)
         {
             var authCookiesContainer = new CookieContainer();
             var siteUri = new Uri(siteUrl);
@@ -296,7 +308,7 @@ namespace OfficeDevPnP.Core
                 }
                 var browser = new System.Windows.Forms.WebBrowser
                 {
-                    ScriptErrorsSuppressed = true,
+                    ScriptErrorsSuppressed = scriptErrorsSuppressed,
                     Dock = DockStyle.Fill
                 };
 

@@ -21,7 +21,7 @@
     <DefineConstants>TRACE;DEBUG;CODE_ANALYSIS</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <RunCodeAnalysis>true</RunCodeAnalysis>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
     <CodeAnalysisRuleSet>BasicCorrectnessRules.ruleset</CodeAnalysisRuleSet>
     <DocumentationFile>bin\Debug\OfficeDevPnP.Core.XML</DocumentationFile>
     <NoWarn>1591</NoWarn>
@@ -967,10 +967,12 @@
     <Compile Include="Extensions\PnPClientContext.cs" />
     <Compile Include="IdentityModel\TokenProviders\ADFS\CertificateMixed.cs" />
     <Compile Include="IdentityModel\WSTrustBindings\CertificateWSTrustBinding.cs" />
+    <Compile Include="Pages\ClientSideSectionEmphasis.cs" />
     <Compile Include="Pages\ClientSideText.cs" />
     <Compile Include="Pages\ClientSideTextControlData.cs" />
     <Compile Include="Pages\ClientSideWebPart.cs" />
     <Compile Include="Pages\ClientSideWebPartControlData.cs" />
+    <Compile Include="Pages\ClientSideWebPartControlDataOnly.cs" />
     <Compile Include="Pages\ClientSideWebPartData.cs" />
     <Compile Include="Pages\DefaultClientSideWebParts.cs" />
     <Compile Include="Pages\PromotedState.cs" />
